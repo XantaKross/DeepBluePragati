@@ -1,17 +1,15 @@
 // ignore_for_file: dead_code
 
 import 'package:flutter/material.dart';
-import 'package:pragati_1/Chatbot.dart';
+import 'Chatbot.dart';
 import 'upload_page.dart';
-import 'package:pragati_1/Signup.dart';
+import 'signup_page.dart';
+import 'package:flutter/foundation.dart';
 
 Color _gold = Color(0xFFD4A064);
 Color _white = Color(0xFFF2F5F8);
 Color _blue = Color(0xFF1C2541);
 Color _red = Color(0xFFCC4E5C);
-Color _teal = Color(0xFF3A6F81);
-Color _skyBlue = Color(0xFF7AB8D9);
-Color _blue_1 = Color(0xFF7f30fe);
 
 class StudentsLogin extends StatelessWidget {
   const StudentsLogin({Key? key});
@@ -39,6 +37,14 @@ class _SignInState extends State<SignIn> {
   final _formKey = GlobalKey<FormState>();
 
   @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    api.getCSRF(kIsWeb);
+  }
+
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
@@ -49,7 +55,7 @@ class _SignInState extends State<SignIn> {
               width: MediaQuery.of(context).size.width,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [_blue, _blue],
+                  colors: [_blue, Color(0xFF7f30fe)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -67,7 +73,7 @@ class _SignInState extends State<SignIn> {
                 children: [
                   Center(
                     child: Text(
-                      "LogIn",
+                      "Log In",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24.0,
@@ -124,39 +130,40 @@ class _SignInState extends State<SignIn> {
                                   obscureText: true,
                                   prefixIcon: Icons.lock,
                                 ),
-                                SizedBox(height: 10.0),
-                                Container(
-                                  alignment: Alignment.bottomRight,
-                                  child: GestureDetector(
-                                    onTap: () {},
-                                    child: Text(
-                                      "Forgot Password?",
-                                      style: TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 16.0,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                                // SizedBox(height: 10.0),
+                                // Container(
+                                //   alignment: Alignment.bottomRight,
+                                //   child: GestureDetector(
+                                //     onTap: () {},
+                                //     child: Text(
+                                //       "Forgot Password?",
+                                //       style: TextStyle(
+                                //         color: Colors.black,
+                                //         fontSize: 16.0,
+                                //         fontWeight: FontWeight.w500,
+                                //       ),
+                                //     ),
+                                //   ),
+                                // ),
                                 SizedBox(height: 10.0),
                                 GestureDetector(
-                                  onTap: () {
+                                  onTap: () async {
                                     if (_formKey.currentState!.validate()) {
                                       // Perform login action
                                       if (_formKey.currentState!.validate()) {
                                         // Validate user input and perform login action
-                                        bool isAuthenticated = true;
-                                        //await api.login(
-                                        //   userMailController.text,
-                                        //   userPasswordController.text,
-                                        // );
+                                        bool isAuthenticated = await api.LogIn(userMailController.text, userPasswordController.text);
+
+                                        print(1212);
+                                        print(isAuthenticated);
 
                                         if (isAuthenticated) {
                                           print('Auth');
                                           // If the user is authenticated, proceed with identified user logic
                                           // You can navigate to the next screen or perform other actions here
                                           // For example:
+                                          //api.getFiles(); // Reset the file list.
+
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
@@ -187,17 +194,13 @@ class _SignInState extends State<SignIn> {
                                         child: Container(
                                           padding: EdgeInsets.all(10),
                                           decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [_blue, _blue],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                            ),
+                                            color: _blue,
                                             borderRadius:
                                                 BorderRadius.circular(10),
                                           ),
                                           child: Center(
                                             child: Text(
-                                              "LogIn",
+                                              "Log In",
                                               style: TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 18.0,
@@ -241,7 +244,7 @@ class _SignInState extends State<SignIn> {
                             );
                           },
                           child: Text(
-                            " Sign Up Now!",
+                            " Sign Up!",
                             style: TextStyle(
                               color: Color(0xFF7f30fe),
                               fontSize: 16.0,

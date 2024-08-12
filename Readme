@@ -1,0 +1,8 @@
+If and when we have to reset the database perhaps due to data corruption or most likely password forgetting here are the steps to follow:
+1. reconfigure mysql through installer and reset password. Or reinstall mysql entirely. Thus resetting the password.
+NOTE: This will delete all previous memory and database schema.
+2. delete all migrations, mainly the one in databaseAPI.
+3. run cmd "python manage.py migrate databaseAPI zero"
+4. run cmd "python manage.py makemigrations databaseAPI"
+5. run cmd "python manage.py migrate databaseAPI"
+6. You are done.

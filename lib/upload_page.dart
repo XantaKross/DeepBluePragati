@@ -9,14 +9,39 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'API.dart';
 import 'Chatbot.dart';
-import 'login_page.dart';
 
 Color _gold = Color(0xFFD4A064);
 Color _white = Color(0xFFF2F5F8);
 Color _blue = Color(0xFF1C2541);
 Color _red = Color(0xFFCC4E5C);
 
-// ChatAPI api = new ChatAPI();
+ChatAPI api = new ChatAPI();
+
+Future<void> fetchFiles() async {
+  await api.getFiles();
+}
+
+
+void changeMainFile(BuildContext context) async {
+  final overlayState = Overlay.of(context);
+
+  // Create the loading overlay entry
+  final overlayEntry = OverlayEntry(
+    builder: (BuildContext context) => const LoadingOverlay(),
+  );
+
+  // Insert the overlay entry
+  overlayState.insert(overlayEntry);
+
+  try {
+    await api.changeMainFile();
+  } catch (error) {// Handle errors gracefully
+    print(error);}
+  finally {// Hide the loading animation regardless of success or failure
+    overlayEntry.remove(); }
+
+}
+
 
 class Myupload extends StatelessWidget {
   @override
@@ -40,15 +65,22 @@ class UploadPage extends StatefulWidget {
 class _UploadPageState extends State<UploadPage> {
   String _fileName = '';
   List<String> _uploadedFileNames = [];
+  bool changes = true;
 
   @override
-  // void initState() {
-  //   // api.getCSRF();
-  // }
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    api.getFiles(); // Get files list. As soon as this page is reached.
+    }
+
+
+
+
   File? uploadedFile; // Declare the variable outside the function
   Future pickFile() async {
     FilePickerResult? result =
-        await FilePicker.platform.pickFiles(allowMultiple: false);
+    await FilePicker.platform.pickFiles(allowMultiple: false);
 
     if (result != null) {
       if (mounted) {
@@ -56,16 +88,23 @@ class _UploadPageState extends State<UploadPage> {
           _fileName = result.files.single.name;
           _uploadedFileNames.add(_fileName);
 
+          api.isUpdated = true;
+
           if (kIsWeb) {
             final data = result.files.single.bytes;
-            final base64EncodedData = base64Encode(data!);
-            API.webUploadedFile = data as Uint8List;
+            ChatAPI.webUploadedFile = data as Uint8List;
+
+            api.sendFile(data, _fileName, kIsWeb);
+
           } else {
             final path = result.files.first.path;
             SfPdfViewer.file(path! as File);
-            // final File _file = File(path!);
-            API.uploadedFile = File(path!);
-            //  api.sendFile(_file, _fileName);
+            final File _file = File(path!);
+            ChatAPI.uploadedFile = File(path!);
+
+
+
+            api.sendFile(_file, _fileName, kIsWeb);
           }
         });
       }
@@ -75,6 +114,8 @@ class _UploadPageState extends State<UploadPage> {
   }
 
   void _handleUpload(BuildContext context) {
+    // CHANGE 1; REQUIRES DEBUG.
+    // changeMainFile(context);
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => MyApp()),
@@ -83,6 +124,16 @@ class _UploadPageState extends State<UploadPage> {
 
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+        future: fetchFiles(),
+    builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+    // Return a loading indicator or placeholder widget
+    return Center(child: CircularProgressIndicator());
+    } else if (snapshot.hasError) {
+    // Handle errors
+    return Center(child: Text('Error: ${snapshot.error}'));
+    } else {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: _blue,
@@ -96,8 +147,8 @@ class _UploadPageState extends State<UploadPage> {
           children: [
             Center(
               child: Text(
-                'Upload your documents',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                'Upload Your Documents',
+                style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
               ),
             ),
             SizedBox(height: 10),
@@ -124,7 +175,7 @@ class _UploadPageState extends State<UploadPage> {
                       ),
                       Center(
                         child: Text(
-                          'Upload Your Files Here',
+                          'Click Here To Add File',
                           style: TextStyle(color: _blue, fontSize: 20.0),
                         ),
                       ),
@@ -145,11 +196,26 @@ class _UploadPageState extends State<UploadPage> {
                   backgroundColor: MaterialStateProperty.all(_gold),
                 ),
                 onPressed: () {
+
+                  // String element = _fileName;
+                  // api.userFiles.remove(element);
+                  // api.userFiles.insert(0, element);
+
+                  String element = _fileName;
+                  if (api.userFiles.contains(element)) {
+                    api.userFiles.remove(element);
+                    api.userFiles.insert(0, element);
+                  } else {
+
+                    api.userFiles.insert(0, element);
+                    // Element is not present, do nothing
+                  }
+
                   _handleUpload(context);
                 },
                 child: Text(
-                  'Ready to discuss',
-                  style: TextStyle(color: _blue),
+                  'Continue',
+                  style: TextStyle(color: _blue, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -171,18 +237,7 @@ class _UploadPageState extends State<UploadPage> {
       ),
     );
   }
-}
-
-class ChatScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Chat Screen'),
-      ),
-      body: Center(
-        child: Text('This is the Chat Screen'),
-      ),
-    );
+});
   }
-}
+        }
+

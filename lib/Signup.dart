@@ -1,14 +1,6 @@
-// ignore_for_file: dead_code
-
 import 'package:flutter/material.dart';
-import 'package:pragati_1/Chatbot.dart';
-import 'package:pragati_1/login_page.dart';
-
-// void main() {
-//   runApp(
-//     StudentsLogin(),
-//   );
-// }
+import 'Chatbot.dart';
+import 'login_page.dart';
 
 Color _gold = Color(0xFFD4A064);
 Color _white = Color(0xFFF2F5F8);
@@ -135,21 +127,21 @@ class _SignInState extends State<SignUp> {
                                   obscureText: true,
                                   prefixIcon: Icons.lock,
                                 ),
-                                SizedBox(height: 10.0),
-                                Container(
-                                  alignment: Alignment.bottomRight,
-                                  child: GestureDetector(
-                                    onTap: () {},
-                                    child: Text(
-                                      "Forgot Password?",
-                                      style: TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 16.0,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                                // SizedBox(height: 10.0),
+                                // Container(
+                                //   alignment: Alignment.bottomRight,
+                                //   child: GestureDetector(
+                                //     onTap: () {},
+                                //     child: Text(
+                                //       "Forgot Password?",
+                                //       style: TextStyle(
+                                //         color: Colors.black,
+                                //         fontSize: 16.0,
+                                //         fontWeight: FontWeight.w500,
+                                //       ),
+                                //     ),
+                                //   ),
+                                // ),
                                 SizedBox(height: 10.0),
                                 GestureDetector(
                                   onTap: () {

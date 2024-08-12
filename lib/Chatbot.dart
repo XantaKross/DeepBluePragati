@@ -1,6 +1,3 @@
-// ignore_for_file: unused_field, file_names, prefer_const_constructors, unused_element, use_key_in_widget_constructors, prefer_final_fields, prefer_const_literals_to_create_immutables, sort_child_properties_last, avoid_print, prefer_const_constructors_in_immutables, deprecated_member_use
-
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -8,13 +5,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:pragati_1/pdf_test.dart';
+import 'package:pragati_a/login_page.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:pragati_1/upload_page.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import 'API.dart';
-// import 'upload_page.dart';
+import 'chart_data_models.dart';
+import 'pdfviewerx.dart';
+import 'upload_page.dart';
 
 Color _gold = Color(0xFFD4A064);
 Color _white = Color(0xFFF2F5F8);
@@ -27,7 +25,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Consult with FileName',
+      title: 'Consult with ${api.selectedOption ? 'Gyan' : 'Gemini'}',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -43,17 +41,8 @@ class ChatScreen extends StatefulWidget {
 
 class ChatScreenState extends State<ChatScreen> {
   File? _file;
-  List<bool> isSelected = [
-    true,
-    false
-  ]; // Assuming 'Gyan' is initially selected
-  List fileNames = [
-    'File_name 1',
-    'File_name 2',
-    'File_name 3',
-    'File_name 4',
-    'File_name 5',
-  ];
+  bool changes =
+      false; // simple boot to rewrite the UI tree. Coz setting it to a int may cause
   final TextEditingController _messageController = TextEditingController();
   final List<ChatMessage> _messages = [];
   bool isBotTyping = false;
@@ -64,7 +53,6 @@ class ChatScreenState extends State<ChatScreen> {
   String text = '';
   double _confidence = 1.0;
   String _fileName = '';
-  List<String> _uploadedFileNames = [];
 
   @override
   void initState() {
@@ -73,34 +61,6 @@ class ChatScreenState extends State<ChatScreen> {
     _speech = stt.SpeechToText();
   }
 
-  // Future pickFile() async {
-  //   FilePickerResult? result =
-  //       await FilePicker.platform.pickFiles(allowMultiple: false);
-
-  //   if (result != null) {
-  //     if (mounted) {
-  //       setState(() {
-  //         _fileName = result.files.single.name;
-  //         _uploadedFileNames.add(_fileName);
-
-  //         if (kIsWeb) {
-  //           final data = result.files.single.bytes;
-  //           final base64EncodedData = base64Encode(data!);
-  //           final File _file =
-  //               File('data:application/octet-stream;base64,$base64EncodedData');
-
-  //           // Do something with the file data, like sending it to the server
-  //         } else {
-  //           var path = result.files.first.path;
-  //           final File _file = File(path!);
-  //           //  api.sendFile(_file, _fileName);
-  //         }
-  //       });
-  //     }
-  //   } else {
-  //     // User canceled the picker
-  //   }
-  // }
   Future pickFile() async {
     FilePickerResult? result =
         await FilePicker.platform.pickFiles(allowMultiple: false);
@@ -109,18 +69,20 @@ class ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         setState(() {
           _fileName = result.files.single.name;
-          _uploadedFileNames.add(_fileName);
+          api.isUpdated = true;
 
           if (kIsWeb) {
             final data = result.files.single.bytes;
-            final base64EncodedData = base64Encode(data!);
-            API.webUploadedFile = data as Uint8List;
+            ChatAPI.webUploadedFile = data as Uint8List;
+
+            api.sendFile(data, _fileName, kIsWeb);
           } else {
-            final path = result.files.first.path;
+            var path = result.files.first.path;
             SfPdfViewer.file(path! as File);
-            // final File _file = File(path!);
-            API.uploadedFile = File(path!);
-            //  api.sendFile(_file, _fileName);
+            final File _file = File(path!);
+            ChatAPI.uploadedFile = File(path!);
+
+            api.sendFile(_file, _fileName, kIsWeb);
           }
         });
       }
@@ -135,10 +97,27 @@ class ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  void handleDeleteFile(int index) async {
+    await api.deleteFile(index);
+    setState(() {
+      changes = !changes;
+    });
+    api.isUpdated = true;
+    changeMainFile(context);
+  }
+
+  void rearrangeFiles() async {
+    setState(() {
+      changes = !changes;
+    });
+    api.isUpdated = true;
+    changeMainFile(context);
+  }
+
   void _logout(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => Myupload()),
+      MaterialPageRoute(builder: (context) => StudentsLogin()),
     );
   }
 
@@ -156,7 +135,7 @@ class ChatScreenState extends State<ChatScreen> {
         backgroundColor: _blue,
         title: Center(
           child: Text(
-            'Consult with ',
+            'Consult with ${api.selectedOption ? 'Gyan' : 'Gemini'}',
             style: TextStyle(color: _gold),
           ),
         ),
@@ -211,7 +190,7 @@ class ChatScreenState extends State<ChatScreen> {
                     height: 100.0,
 
                     child: Image.asset(
-                      'assets/Gyan.jpg', // Replace with the actual path to your image
+                      'Gyan.jpg', // Replace with the actual path to your image
                       fit:
                           BoxFit.fitHeight, // Adjust the fit property as needed
                     ),
@@ -219,47 +198,48 @@ class ChatScreenState extends State<ChatScreen> {
                   Center(
                     child: ToggleButtons(
                       borderColor: Colors.black,
-                      fillColor: _gold,
+                      fillColor:
+                          _gold, // Color for both selected and unselected buttons
                       borderWidth: 2,
-                      selectedBorderColor: Colors.black,
-                      selectedColor: _gold,
+                      selectedBorderColor:
+                          Colors.black, // Border color remains black
+                      selectedColor: Colors
+                          .transparent, // Make selected button background transparent
                       borderRadius: BorderRadius.circular(8),
                       children: <Widget>[
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: GestureDetector(
-                            onTap: () {},
-                            child: Text(
-                              'Gyan',
-                              style: TextStyle(color: _blue),
+                          child: Text(
+                            'Gyan',
+                            style: TextStyle(
+                              color: api.selectedOption
+                                  ? Colors.blueGrey[900]
+                                  : _blue, // Dark blue for selected, blue for unselected
                             ),
                           ),
                         ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: GestureDetector(
-                            onTap: () {},
-                            child: Text(
-                              'Gemini',
-                              style: TextStyle(color: _blue),
+                          child: Text(
+                            'Gemini',
+                            style: TextStyle(
+                              color: !api.selectedOption
+                                  ? Colors.blueGrey[900]
+                                  : _blue, // Dark blue for unselected, blue for selected (inverted logic)
                             ),
                           ),
                         ),
                       ],
                       onPressed: (int index) {
                         setState(() {
-                          for (int buttonIndex = 0;
-                              buttonIndex < isSelected.length;
-                              buttonIndex++) {
-                            if (buttonIndex == index) {
-                              isSelected[buttonIndex] = true;
-                            } else {
-                              isSelected[buttonIndex] = false;
-                            }
-                          }
+                          api.selectedOption = !api
+                              .selectedOption; // Toggle the state on button press
                         });
                       },
-                      isSelected: isSelected,
+                      isSelected: [
+                        api.selectedOption,
+                        !api.selectedOption
+                      ], // Create a list based on the single bool
                     ),
                   ),
                   SizedBox(
@@ -267,6 +247,8 @@ class ChatScreenState extends State<ChatScreen> {
                   ),
                   GestureDetector(
                     onTap: () {
+                      // var localFile = await api.file;
+
                       setState(() {
                         Navigator.push(
                           context,
@@ -293,6 +275,41 @@ class ChatScreenState extends State<ChatScreen> {
                               Center(
                                 child: Text(
                                   'Read PDF',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 15),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => DashboardAp()),
+                      );
+                    },
+                    child: Container(
+                      padding:
+                          EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.dashboard),
+                              SizedBox(
+                                width: 10,
+                              ),
+                              Center(
+                                child: Text(
+                                  'Dashboard',
                                   style: TextStyle(fontSize: 16),
                                 ),
                               ),
@@ -346,8 +363,7 @@ class ChatScreenState extends State<ChatScreen> {
                   SizedBox(
                     height: 200, // Set a fixed height for the ListView
                     child: ListView.builder(
-                      itemCount: fileNames
-                          .length, // Replace fileNames with your list of file names
+                      itemCount: api.userFiles.length,
                       itemBuilder: (context, index) {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -356,38 +372,61 @@ class ChatScreenState extends State<ChatScreen> {
                               children: [
                                 Expanded(
                                   flex: 8,
-                                  child: GestureDetector(
+                                  child: InkWell(
                                     onTap: () {
-                                      // Add your logic for button tap here
-                                      // You can access the file name using fileNames[index]
+                                      String element = api.userFiles[index];
+                                      api.userFiles.remove(element);
+                                      api.userFiles.insert(0, element);
+                                      rearrangeFiles();
                                     },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 8,
-                                        horizontal: 12,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[300],
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.file_copy),
-                                          SizedBox(
-                                            width: 10,
+                                    splashColor: Colors.grey[400],
+                                    child: Padding(
+                                      // Add padding
+                                      padding: const EdgeInsets.all(
+                                          4.0), // Adjust padding as needed
+                                      child: Container(
+                                        // Transparent container
+                                        decoration: BoxDecoration(
+                                          color: Colors.transparent,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Container(
+                                          // Inner container with background
+                                          padding: const EdgeInsets.all(
+                                              4.0), // Match outer padding
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[200],
+                                            borderRadius:
+                                                BorderRadius.circular(8),
                                           ),
-                                          Center(
-                                            child: Text(fileNames[index]),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.file_copy),
+                                              SizedBox(width: 10),
+                                              Expanded(
+                                                child: SingleChildScrollView(
+                                                  scrollDirection:
+                                                      Axis.horizontal,
+                                                  child: Text(
+                                                    api.userFiles[index],
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ],
-                                      ), // Display the file name
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
                                 Expanded(
                                   flex: 2,
                                   child: IconButton(
-                                      onPressed: () {},
+                                      onPressed: () => handleDeleteFile(index),
                                       icon: Icon(Icons.delete)),
                                 ),
                               ],
@@ -408,11 +447,6 @@ class ChatScreenState extends State<ChatScreen> {
       body: Container(
         decoration: BoxDecoration(
           color: _white,
-          // image: DecorationImage(
-          //   image: AssetImage(
-          //       "assets/images/bot_background.jpeg"), // Replace with your asset image
-          //   fit: BoxFit.cover,
-          // ),
         ),
         child: Column(
           children: [
@@ -476,13 +510,10 @@ class ChatScreenState extends State<ChatScreen> {
           IconButton(
               onPressed: () async {
                 await pickFile();
-
-                // setState(() {
-                //   Navigator.push(
-                //     context,
-                //     MaterialPageRoute(builder: (context) => MyWidget()),
-                //   );
-                // });
+                changeMainFile(context);
+                setState(() {
+                  changes = !changes;
+                });
               },
               icon: Icon(
                 Icons.picture_as_pdf,
@@ -505,11 +536,17 @@ class ChatScreenState extends State<ChatScreen> {
             IconButton(
               icon: Icon(
                 Icons.mic,
-                color: _gold,
+                color: _isListening ? _red : _gold,
               ),
               onPressed: () {
-                // Handle microphone button press
-                _listen();
+                if (_isListening) {
+                  _messageController.clear();
+                  _speech.stop();
+                  setState(() => _isListening = false);
+                } else {
+                  // Start listening
+                  _listen();
+                }
               },
             ),
           IconButton(
@@ -535,15 +572,25 @@ class ChatScreenState extends State<ChatScreen> {
       if (available) {
         setState(() => _isListening = true);
         _speech.listen(
-          onResult: (val) => setState(() {
-            text = val.recognizedWords;
-            // _messageController = val.recognizedWords;
-            if (val.hasConfidenceRating && val.confidence > 0) {
-              _confidence = val.confidence;
-            }
-            _messageController.text = text;
-          }),
+          onResult: (val) {
+            setState(() {
+              text = val.recognizedWords;
+              if (val.hasConfidenceRating && val.confidence > 0) {
+                _confidence = val.confidence;
+              }
+              _messageController.text = text;
+            });
+          },
+          listenFor: Duration(seconds: 8),
+          cancelOnError: true,
+          partialResults: true,
         );
+        Future.delayed(Duration(seconds: 8), () {
+          if (_isListening) {
+            _speech.stop();
+            setState(() => _isListening = false);
+          }
+        });
       }
     } else {
       setState(() => _isListening = false);
@@ -567,12 +614,13 @@ class ChatScreenState extends State<ChatScreen> {
     });
 
     // Send the user text to server
-    // var (reply, context) = (await api.communicate(text)) ;
+    var (reply, context) = (await api.communicate(text));
 
     ChatMessage aiMessage = ChatMessage(
-      text: 'Sample Text', //reply,
+      text: reply, //reply,
       isUser: false,
-      context: 'Sample', //,
+      context: context,
+      //,
     );
 
     setState(() {
@@ -666,11 +714,12 @@ class ChatMessage extends StatelessWidget {
                                   'Context',
                                   style: TextStyle(color: _blue),
                                 )), // Customize the title
-                                content: Text(
-                                  'Enter the additional context for your message:' *
-                                      50,
-                                  style:
-                                      TextStyle(color: _gold, fontSize: 16.0),
+                                content: SingleChildScrollView(
+                                  child: Text(
+                                    this.context,
+                                    style:
+                                        TextStyle(color: _gold, fontSize: 16.0),
+                                  ),
                                 ),
                               ),
                             );
